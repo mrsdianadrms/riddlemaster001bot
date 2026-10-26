@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RiddleMaster</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 16px;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            padding: 20px 24px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+        }
+        .header h1 { font-size: 28px; color: #fff; }
+        .header p { color: rgba(255,255,255,0.8); font-size: 14px; margin-top: 4px; }
+
+        /* STATS */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #1e293b;
+            padding: 14px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #334155;
+        }
+        .stat-card .value { font-size: 24px; font-weight: 700; color: #818cf8; }
+        .stat-card .label { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+
+        /* RIDDLE CARD */
+        .riddle-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+        .difficulty-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .difficulty-easy { background: #065f46; color: #6ee7b7; }
+        .difficulty-medium { background: #92400e; color: #fcd34d; }
+        .difficulty-hard { background: #991b1b; color: #fca5a5; }
+
+        .riddle-number { font-size: 13px; color: #94a3b8; margin-bottom: 8px; }
+        .riddle-text {
+            font-size: 20px;
+            line-height: 1.5;
+            color: #f1f5f9;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        /* HINT */
+        .hint-box {
+            background: #0f172a;
+            border: 1px dashed #475569;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .hint-box.visible { display: block; }
+        .hint-box .hint-label { font-size: 12px; color: #f59e0b; margin-bottom: 4px; }
+        .hint-box .hint-text { font-size: 14px; color: #cbd5e1; }
+
+        /* INPUT */
+        .answer-input {
+            width: 100%;
+            padding: 14px 16px;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 10px;
+            color: #f1f5f9;
+            font-size: 16px;
+            outline: none;
+            transition: 0.2s;
+        }
+        .answer-input:focus { border-color: #6366f1; }
+        .answer-input::placeholder { color: #64748b; }
+
+        /* BUTTONS */
+        .btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            flex: 1;
+            min-width: 100px;
+            font-family: inherit;
+        }
+        .btn-primary { background: #6366f1; color: #fff; }
+        .btn-primary:hover { background: #4f46e5; transform: translateY(-1px); }
+        .btn-primary:disabled { background: #475569; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: #334155; color: #e2e8f0; }
+        .btn-secondary:hover { background: #475569; }
+        .btn-warning { background: #f59e0b; color: #1e293b; }
+        .btn-warning:hover { background: #d97706; }
+
+        /* FEEDBACK */
+        .feedback {
+            margin-top: 16px;
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 15px;
+            display: none;
+        }
+        .feedback.correct { display: block; background: #065f46; color: #6ee7b7; border: 1px solid #10b981; }
+        .feedback.wrong { display: block; background: #991b1b; color: #fca5a5; border: 1px solid #ef4444; }
+
+        /* NEXT BUTTON */
+        .next-btn-container { margin-top: 16px; display: none; }
+        .next-btn-container.visible { display: block; }
+
+        /* HISTORY */
+        .history-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .history-card h3 { font-size: 16px; margin-bottom: 12px; color: #cbd5e1; }
+        .history-list { list-style: none; }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #334155;
+            font-size: 14px;
+        }
+        .history-item:last-child { border-bottom: none; }
+        .history-item .history-riddle { color: #94a3b8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .history-item .history-status { font-size: 16px; margin-left: 8px; }
+        .empty-history { color: #64748b; font-size: 14px; text-align: center; padding: 12px; }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: #f1f5f9;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 500;
+            z-index: 999;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            border: 1px solid #334155;
+        }
+
+        /* BLOCK PAGE */
+        .blocked {
+            text-align: center;
+            padding: 60px 20px;
+            max-width: 420px;
+            margin: 0 auto;
+        }
+        .blocked .icon { font-size: 56px; color: #ef4444; margin-bottom: 16px; }
+        .blocked h2 { font-size: 26px; margin-bottom: 8px; }
+        .blocked p { color: #94a3b8; margin-bottom: 24px; }
+        .blocked .telegram-btn {
+            display: inline-block;
+            background: #0088cc;
+            color: white;
+            padding: 12px 32px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        @media (max-width: 400px) {
+            .btn { font-size: 14px; padding: 10px 14px; }
+            .riddle-text { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ========================================================= -->
+<!-- TELEGRAM-ONLY ENFORCEMENT                                 -->
+<!-- ========================================================= -->
+<script>
+    (function() {
+        let isTelegram = !!(window.Telegram && window.Telegram.WebApp);
+        if (!isTelegram) {
+            const ua = navigator.userAgent || '';
+            if (ua.includes('Telegram')) isTelegram = true;
+        }
+        if (!isTelegram) {
+            document.body.innerHTML = `
+                <div class="blocked">
+                    <div class="icon">🔒</div>
+                    <h2>Open in Telegram</h2>
+                    <p>RiddleMaster works only inside the Telegram app.</p>
+                    <a href="https://t.me/YourBotUsername" class="telegram-btn">
+                        <i class="fas fa-telegram-plane"></i> Open in Telegram
+                    </a>
+                </div>
+            `;
+            throw new Error('Not in Telegram');
+        }
+    })();
+</script>
+
+<!-- ========================================================= -->
+<!-- APP CONTENT                                               -->
+<!-- ========================================================= -->
+<div class="container">
+
+    <div class="header">
+        <h1>🧩 RiddleMaster</h1>
+        <p>Test your wit — one riddle at a time</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="value" id="statSolved">0</div>
+            <div class="label">Solved</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="statStreak">0</div>
+            <div class="label">Streak</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="statTotal">0</div>
+            <div class="label">Attempted</div>
+        </div>
+    </div>
+
+    <!-- Riddle Card -->
+    <div class="riddle-card">
+        <div class="difficulty-badge difficulty-easy" id="difficultyBadge">Easy</div>
+        <div class="riddle-number" id="riddleNumber">Riddle #1</div>
+        <div class="riddle-text" id="riddleText">Loading riddle...</div>
+
+        <div class="hint-box" id="hintBox">
+            <div class="hint-label">💡 Hint</div>
+            <div class="hint-text" id="hintText"></div>
+        </div>
+
+        <input type="text" class="answer-input" id="answerInput" placeholder="Type your answer..." autocomplete="off" />
+
+        <div class="btn-row">
+            <button class="btn btn-warning" id="hintBtn">💡 Hint</button>
+            <button class="btn btn-primary" id="submitBtn">✓ Submit</button>
+        </div>
+
+        <div class="feedback" id="feedback"></div>
+
+        <div class="next-btn-container" id="nextBtnContainer">
+            <button class="btn btn-primary" id="nextBtn">Next Riddle →</button>
+        </div>
+    </div>
+
+    <!-- History -->
+    <div class="history-card">
+        <h3>📜 Recent Riddles</h3>
+        <ul class="history-list" id="historyList">
+            <li class="empty-history">No riddles answered yet.</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ========================================================= -->
+<!-- JAVASCRIPT                                                -->
+<!-- ========================================================= -->
+<script>
+    // =========================================================
+    // CONFIGURATION – CHANGE THIS TO YOUR BOT USERNAME
+    // =========================================================
+    const BOT_USERNAME = 'YourBotUsername'; // <-- REPLACE WITH YOUR BOT USERNAME (without @)
+
+    // =========================================================
+    // TELEGRAM WEB APP
+    // =========================================================
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    // =========================================================
+    // RIDDLE DATABASE (No external API needed)
+    // =========================================================
+    const RIDDLES = [
+        {
+            question: "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?",
+            answer: "echo",
+            hint: "You hear me in mountains and empty rooms.",
+            difficulty: "easy"
+        },
+        {
+            question: "The more of me there is, the less you see. What am I?",
+            answer: "darkness",
+            hint: "It disappears when you turn on a light.",
+            difficulty: "easy"
+        },
+        {
+            question: "I have keys but no locks. I have space but no room. You can enter, but you can't go outside. What am I?",
+            answer: "keyboard",
+            hint: "You use me to type on a computer.",
+            difficulty: "easy"
+        },
+        {
+            question: "I'm tall when I'm young, and short when I'm old. What am I?",
+            answer: "candle",
+            hint: "I melt as I burn.",
+            difficulty: "easy"
+        },
+        {
+            question: "What has hands but can't clap?",
+            answer: "clock",
+            hint: "I tell you the time.",
+            difficulty: "easy"
+        },
+        {
+            question: "What gets wetter the more it dries?",
+            answer: "towel",
+            hint: "You use me after a shower.",
+            difficulty: "medium"
+        },
+        {
+            question: "I'm always in front of you, but can never be seen. What am I?",
+            answer: "future",
+            hint: "It hasn't happened yet.",
+            difficulty: "medium"
+        },
+        {
+            question: "What has a head, a tail, but no body?",
+            answer: "coin",
+            hint: "You flip me to make a decision.",
+            difficulty: "medium"
+        },
+        {
+            question: "What can travel around the world while staying in a corner?",
+            answer: "stamp",
+            hint: "You put me on an envelope.",
+            difficulty: "medium"
+        },
+        {
+            question: "I have cities, but no houses. I have mountains, but no trees. I have water, but no fish. What am I?",
+            answer: "map",
+            hint: "You use me to find your way.",
+            difficulty: "medium"
+        },
+        {
+            question: "What is so fragile that saying its name breaks it?",
+            answer: "silence",
+            hint: "It's the absence of sound.",
+            difficulty: "hard"
+        },
+        {
+            question: "I am not alive, but I grow. I don't have lungs, but I need air. I don't have a mouth, but water kills me. What am I?",
+            answer: "fire",
+            hint: "I give light and heat.",
+            difficulty: "hard"
+        },
+        {
+            question: "What has many teeth, but can't bite?",
+            answer: "comb",
+            hint: "You use me on your hair.",
+            difficulty: "hard"
+        },
+        {
+            question: "What can you hold in your left hand but not in your right?",
+            answer: "right elbow",
+            hint: "Think about your body.",
+            difficulty: "hard"
+        },
+        {
+            question: "I am taken from a mine and shut up in a wooden case, from which I am never released, and yet I am used by almost everyone. What am I?",
+            answer: "pencil lead",
+            hint: "You write with me.",
+            difficulty: "hard"
+        },
+        {
+            question: "What goes up but never comes down?",
+            answer: "age",
+            hint: "It increases every year.",
+            difficulty: "easy"
+        },
+        {
+            question: "What has one eye but can't see?",
+            answer: "needle",
+            hint: "You use me to sew.",
+            difficulty: "medium"
+        },
+        {
+            question: "I'm light as a feather, yet the strongest man can't hold me for much more than a minute. What am I?",
+            answer: "breath",
+            hint: "You do it every second.",
+            difficulty: "hard"
+        },
+        {
+            question: "What begins with T, ends with T, and has T in it?",
+            answer: "teapot",
+            hint: "You pour tea from me.",
+            difficulty: "medium"
+        },
+        {
+            question: "What has a neck but no head?",
+            answer: "bottle",
+            hint: "You drink from me.",
+            difficulty: "easy"
+        }
+    ];
+
+    // =========================================================
+    // STATE
+    // =========================================================
+    let currentRiddleIndex = 0;
+    let currentRiddle = null;
+    let solved = 0;
+    let attempted = 0;
+    let streak = 0;
+    let bestStreak = 0;
+    let answered = false;
+    let usedHint = false;
+    let history = [];
+
+    // =========================================================
+    // DOM REFS
+    // =========================================================
+    const $ = id => document.getElementById(id);
+    const riddleText = $('riddleText');
+    const riddleNumber = $('riddleNumber');
+    const difficultyBadge = $('difficultyBadge');
+    const hintBox = $('hintBox');
+    const hintText = $('hintText');
+    const answerInput = $('answerInput');
+    const submitBtn = $('submitBtn');
+    const hintBtn = $('hintBtn');
+    const feedback = $('feedback');
+    const nextBtnContainer = $('nextBtnContainer');
+    const nextBtn = $('nextBtn');
+    const historyList = $('historyList');
+    const statSolved = $('statSolved');
+    const statStreak = $('statStreak');
+    const statTotal = $('statTotal');
+
+    // =========================================================
+    // INIT
+    // =========================================================
+    function init() {
+        // Random starting riddle
+        currentRiddleIndex = Math.floor(Math.random() * RIDDLES.length);
+        loadRiddle();
+        loadHistory();
+        updateStats();
+    }
+
+    // =========================================================
+    // LOAD RIDDLE
+    // =========================================================
+    function loadRiddle() {
+        currentRiddle = RIDDLES[currentRiddleIndex];
+        answered = false;
+        usedHint = false;
+
+        riddleText.textContent = currentRiddle.question;
+        riddleNumber.textContent = `Riddle #${currentRiddleIndex + 1}`;
+
+        // Difficulty badge
+        difficultyBadge.textContent = currentRiddle.difficulty.charAt(0).toUpperCase() + currentRiddle.difficulty.slice(1);
+        difficultyBadge.className = `difficulty-badge difficulty-${currentRiddle.difficulty}`;
+
+        // Reset hint
+        hintBox.classList.remove('visible');
+        hintText.textContent = '';
+
+        // Reset input
+        answerInput.value = '';
+        answerInput.disabled = false;
+
+        // Reset feedback
+        feedback.className = 'feedback';
+        feedback.textContent = '';
+
+        // Reset buttons
+        submitBtn.disabled = false;
+        submitBtn.textContent = '✓ Submit';
+        hintBtn.disabled = false;
+        nextBtnContainer.classList.remove('visible');
+
+        answerInput.focus();
+    }
+
+    // =========================================================
+    // SUBMIT ANSWER
+    // =========================================================
+    submitBtn.addEventListener('click', submitAnswer);
+    answerInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') submitAnswer();
+    });
+
+    function submitAnswer() {
+        if (answered) return;
+
+        const userAnswer = answerInput.value.trim().toLowerCase();
+        if (!userAnswer) {
+            showToast('Please type an answer first.');
+            return;
+        }
+
+        answered = true;
+        attempted++;
+
+        const correctAnswer = currentRiddle.answer.toLowerCase();
+        const isCorrect = userAnswer === correctAnswer;
+
+        // Disable input and buttons
+        answerInput.disabled = true;
+        submitBtn.disabled = true;
+        hintBtn.disabled = true;
+
+        if (isCorrect) {
+            solved++;
+            streak++;
+            if (streak > bestStreak) bestStreak = streak;
+
+            feedback.className = 'feedback correct';
+            feedback.textContent = '✅ Correct! Well done!';
+
+            // Save to history
+            addToHistory(currentRiddle.question, true, currentRiddleIndex);
+
+            // Haptic feedback
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
+        } else {
+            streak = 0;
+
+            feedback.className = 'feedback wrong';
+            feedback.textContent = `❌ Not quite. The answer was: "${currentRiddle.answer}"`;
+
+            // Save to history
+            addToHistory(currentRiddle.question, false, currentRiddleIndex);
+
+            // Haptic feedback
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        }
+
+        updateStats();
+        nextBtnContainer.classList.add('visible');
+    }
+
+    // =========================================================
+    // HINT
+    // =========================================================
+    hintBtn.addEventListener('click', () => {
+        if (answered) return;
+
+        usedHint = true;
+        hintText.textContent = currentRiddle.hint;
+        hintBox.classList.add('visible');
+        hintBtn.disabled = true;
+
+        // Small penalty: mark as attempted but not solved
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    });
+
+    // =========================================================
+    // NEXT RIDDLE
+    // =========================================================
+    nextBtn.addEventListener('click', () => {
+        // Pick a new random riddle (avoid same index)
+        let newIndex = currentRiddleIndex;
+        while (newIndex === currentRiddleIndex && RIDDLES.length > 1) {
+            newIndex = Math.floor(Math.random() * RIDDLES.length);
+        }
+        currentRiddleIndex = newIndex;
+        loadRiddle();
+    });
+
+    // =========================================================
+    // STATS
+    // =========================================================
+    function updateStats() {
+        statSolved.textContent = solved;
+        statStreak.textContent = streak;
+        statTotal.textContent = attempted;
+
+        // Save to local storage
+        try {
+            localStorage.setItem('riddleStats', JSON.stringify({
+                solved, attempted, streak, bestStreak
+            }));
+        } catch (e) {}
+    }
+
+    // =========================================================
+    // HISTORY
+    // =========================================================
+    function addToHistory(question, correct, index) {
+        history.unshift({
+            question: question,
+            correct: correct,
+            index: index,
+            time: new Date().toLocaleTimeString()
+        });
+        if (history.length > 10) history.pop();
+        renderHistory();
+        saveHistory();
+    }
+
+    function renderHistory() {
+        if (history.length === 0) {
+            historyList.innerHTML = '<li class="empty-history">No riddles answered yet.</li>';
+            return;
+        }
+
+        historyList.innerHTML = history.map(item => `
+            <li class="history-item">
+                <span class="history-riddle">${escapeHTML(item.question)}</span>
+                <span class="history-status">${item.correct ? '✅' : '❌'}</span>
+            </li>
+        `).join('');
+    }
+
+    function saveHistory() {
+        try {
+            localStorage.setItem('riddleHistory', JSON.stringify(history));
+        } catch (e) {}
+    }
+
+    function loadHistory() {
+        try {
+            const saved = localStorage.getItem('riddleHistory');
+            if (saved) {
+                history = JSON.parse(saved);
+                renderHistory();
+            }
+            const stats = localStorage.getItem('riddleStats');
+            if (stats) {
+                const s = JSON.parse(stats);
+                solved = s.solved || 0;
+                attempted = s.attempted || 0;
+                streak = s.streak || 0;
+                bestStreak = s.bestStreak || 0;
+                updateStats();
+            }
+        } catch (e) {}
+    }
+
+    // =========================================================
+    // UTILITY
+    // =========================================================
+    function escapeHTML(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function showToast(msg) {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+        const div = document.createElement('div');
+        div.className = 'toast';
+        div.textContent = msg;
+        document.body.appendChild(div);
+        setTimeout(() => {
+            div.style.opacity = '0';
+            div.style.transition = 'opacity 0.3s';
+            setTimeout(() => div.remove(), 300);
+        }, 2000);
+    }
+
+    // =========================================================
+    // START
+    // =========================================================
+    init();
+    console.log('🧩 RiddleMaster loaded successfully!');
+</script>
+
+</body>
+</html>
